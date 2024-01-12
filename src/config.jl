@@ -1,4 +1,7 @@
 datadir = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/"
+outputdir = "../output/"
+
+isdir(outputdir) ? @debug("Directory already exists") : mkpath(outputdir)
 
 cp0 = 3989.244      # J/kg/K is heat capacity
 rho0= 1030          # kg/m3 is density
