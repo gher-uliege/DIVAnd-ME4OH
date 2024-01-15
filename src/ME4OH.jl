@@ -1,5 +1,27 @@
+module ME4OH
+
 using NCDatasets
 using DataStructures
+using Dates
+using Glob 
+
+"""
+    get_filelist(datadir, timeperiod)
+
+Return the list of files that match the time period defined by `timeperiod` (range).
+
+# Example
+```julia-repl
+julia> get_filelist(datadir, 1995:2005)
+```
+"""
+function get_filelist(datadir::AbstractString, timeperiod::UnitRange{Int64}=1900:2100)
+    datafilelist = Glob.glob("*.nc", datadir)
+    yearlist = get_year.(datafilelist)
+    # Select the good year period
+    goodyear = findall((yearlist .<= timeperiod[end]) .& (yearlist .>= timeperiod[1]))
+    return datafilelist[goodyear]
+end
 
 """
     read_profile(datafile)
@@ -85,6 +107,24 @@ function me4oh_dohc(T, z)
 end
 
 """
+    get_year(datafile)
+
+Return the year corresponding to the data file.     
+Useful to list files for a given time interval.
+
+# Example
+```julia-repl
+julia> get_year("ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.nc)
+```
+"""
+function get_year(datafile::AbstractString)
+    NCDataset(datafile, "r") do ds
+        theyear = Int64(ds["en4_ymd"][1,1])
+        return theyear
+    end
+end
+
+"""
     make_fname(timeperiod, depthlayer, experiment; product="DIVAnd")
 
 Create the output netCDF file name based on the time period, the depthj layer and the experiment
@@ -111,7 +151,7 @@ julia> nprofiles = get_profile_number(datafilelist)
 """
 function get_timegrid(timeperiod::UnitRange{Int64})
     dayref = 1 # or shoule be 15?
-    timegrid = collect(DateTime(timeperiod[1], 1, dayref):Dates.Month(1):DateTime(timeperiod1[end], 12, dayref))
+    timegrid = collect(DateTime(timeperiod[1], 1, dayref):Dates.Month(1):DateTime(timeperiod[end], 12, dayref))
     return timegrid::Vector{DateTime}
 end
 
@@ -126,9 +166,10 @@ to be used as an input in the netCDF creation.
 julia> nprofiles = get_profile_number(datafilelist)
 ```
 """
-function datetime2days(timegrid::Vector{DateTime}; dateref = DateTime(1900, 1, 1))
-    timegrid1 = get_timegrid(timeperiod1);
-    daygrid = [(tt .- dateref).value / (1000 * 3600 * 24) for tt in timegrid]
+function datetime2days(timeperiod::UnitRange{Int64}; dateref = DateTime(1900, 1, 1))
+    factor = 1000 * 3600 * 24
+    timegrid = get_timegrid(timeperiod);
+    daygrid = [(tt .- dateref).value / (factor) for tt in timegrid]
     return daygrid::Vector{Float64}
 end
 
@@ -175,7 +216,7 @@ function create_netcdf_results(fname::AbstractString, longrid, latgrid, timegrid
     ds.dim["time"] = Inf
 
     # Declare variables
-    nclat = defVar(ds, "lat", latgrid, ("lat",), attrib = OrderedDict(
+    defVar(ds, "lat", latgrid, ("lat",), attrib = OrderedDict(
         "axis"                      => "Y",
         "actual_range"              => [minimum(latgrid), maximum(latgrid)],
         "long_name"                 => "Latitude",
@@ -183,7 +224,7 @@ function create_netcdf_results(fname::AbstractString, longrid, latgrid, timegrid
         "units"                     => "degrees_north",
     ))
 
-    nclon = defVar(ds, "lon", longrid, ("lon",), attrib = OrderedDict(
+    defVar(ds, "lon", longrid, ("lon",), attrib = OrderedDict(
         "axis"                      => "X",
         "actual_range"              => [minimum(longrid), maximum(longrid)],
         "long_name"                 => "Longitude",
@@ -191,7 +232,7 @@ function create_netcdf_results(fname::AbstractString, longrid, latgrid, timegrid
         "units"                     => "degrees_east",
     ))
 
-    nctime = defVar(ds, "time", daygrid, ("time",), attrib = OrderedDict(
+    defVar(ds, "time", daygrid, ("time",), attrib = OrderedDict(
         "_CoordinateAxisType"       => "Time",
         "actual_range"              => [Dates.format(timegrid[1], dateformat"yyyy-mm-dd"), Dates.format(timegrid[end], dateformat"yyyy-mm-dd")],
         "axis"                      => "T",
@@ -202,7 +243,7 @@ function create_netcdf_results(fname::AbstractString, longrid, latgrid, timegrid
         "units"                     => "days since 1900-01-01T00:00:00Z",
     ))
 
-    ncfield = defVar(ds, "dohc", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
+    defVar(ds, "dohc", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
         "_FillValue"                => Float64(valex),
         "units"                     => "TJ/m^2",
 		"short_name"                => "ocean_heat_content_density",
@@ -230,27 +271,25 @@ function add_residuals(outputfile::AbstractString, datafilelist::Vector{String};
     nprofiles = get_profile_number(datafilelist)
     nprofmax = maximum(nprofiles)
 
-    
-
     NCDataset(outputfile, "a") do ds
         
         ds.dim["nprofiles"] = nprofmax
 
-        ncobslat = defVar(ds, "obslat", Float64, ("nprofiles", "time"), attrib = OrderedDict(
+        defVar(ds, "obslat", Float64, ("nprofiles", "time"), attrib = OrderedDict(
             "axis"                      => "Y",
             "long_name"                 => "Latitude of the observations",
             "standard_name"             => "latitude",
             "units"                     => "degrees_north",
         ))
         
-        ncobslon = defVar(ds, "obslon", Float64, ("nprofiles", "time"), attrib = OrderedDict(
+        defVar(ds, "obslon", Float64, ("nprofiles", "time"), attrib = OrderedDict(
             "axis"                      => "Y",
             "long_name"                 => "Longitude of the observations",
             "standard_name"             => "latitude",
             "units"                     => "degrees_north",
         ))
 
-        ncobstime = defVar(ds, "obstime", Float64, ("nprofiles", "time",), attrib = OrderedDict(
+        defVar(ds, "obstime", Float64, ("nprofiles", "time",), attrib = OrderedDict(
             "_CoordinateAxisType"       => "Time",
             "axis"                      => "T",
             "calendar"                  => "Gregorian",
@@ -260,7 +299,7 @@ function add_residuals(outputfile::AbstractString, datafilelist::Vector{String};
             "units"                     => "days since 1900-01-01T00:00:00Z",
         ))
         
-        ncresiduals = defVar(ds, "dohc_residuals", Float64, ("nprofiles", "time"), attrib = OrderedDict(
+        defVar(ds, "dohc_residuals", Float64, ("nprofiles", "time"), attrib = OrderedDict(
             "_FillValue"                => Float64(valex),
             "units"                     => "TJ/m^2",
             "short_name"                => "ocean_heat_content_density_residuals",
@@ -270,5 +309,7 @@ function add_residuals(outputfile::AbstractString, datafilelist::Vector{String};
     end
 
     return nothing
+
+end
 
 end
