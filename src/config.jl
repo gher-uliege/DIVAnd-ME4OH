@@ -1,9 +1,37 @@
+using Downloads
+
+function make_dox_url(fileid::AbstractString)
+    doxurl = "https://dox.uliege.be/index.php/s/$(fileid)/download"
+    return doxurl::String
+end
+
+function download_check(datafile::AbstractString, datafileURL::AbstractString)
+
+    if !isfile(datafile)
+        Downloads.download(datafileURL, datafile)
+    else
+        @info "File already downloaded"
+    end
+end
+
 datadir = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/"
+bathydir = "../data/"
 datatestdir = "../data/test/"
 outputdir = "../output/"
+figdir = "../figures/"
 
 isdir(outputdir) ? @debug("Directory already exists") : mkpath(outputdir)
 isdir(datatestdir) ? @debug("Directory already exists") : mkpath(datatestdir)
+isdir(figdir) ? @debug("Directory already exists") : mkpath(figdir)
+
+# GEBCO bathymetry
+gebco04file = joinpath(bathydir, "gebco_30sec_4.nc")
+gebco04fileURL = make_dox_url("RSwm4HPHImdZoQP")
+gebco08file = joinpath(bathydir, "gebco_30sec_8.nc")
+gebco08fileURL = make_dox_url("U0pqyXhcQrXjEUX")
+gebco16file = joinpath(bathydir, "gebco_30sec_16.nc")
+gebco16fileURL = make_dox_url("U0pqyXhcQrXjEUX")
+
 
 cp0 = 3989.244      # J/kg/K is heat capacity
 rho0= 1030          # kg/m3 is density
@@ -21,4 +49,7 @@ depthlayer3 = [685.9, 1985.3]
 # Domain grid
 longrid = 20.5:1.0:379.5 
 latgrid = -89.5:1.0:89.5
-bathyfile = "../data/gebco_30sec_16.nc"
+
+bathyfile = gebco16file
+
+download_check(bathyfile, gebco16fileURL);

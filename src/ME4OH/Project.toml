@@ -1,5 +1,6 @@
 [deps]
 DIVAnd = "efc8151c-67de-5a8f-9a35-d8f54746ae9d"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
