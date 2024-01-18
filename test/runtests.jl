@@ -1,22 +1,24 @@
 using Test
+using Dates
+
 include("../src/config.jl")
 include("../src/ME4OH.jl")
 
 @testset "listing files" begin
-    datafile = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.nc")
-    isfile(datafile) ? @debug("Already downloaded") : download("https://dox.ulg.ac.be/index.php/s/rtQcFZDGszhhtfV/download", datafile)
+    download_check(datafiletest1, datafiletest1URL)
+    download_check(datafiletest2, datafiletest2URL)
     datafilelist1 = ME4OH.get_filelist(datatestdir, 1970:2000)
     datafilelist2 = ME4OH.get_filelist(datatestdir, 1990:2000)
-    @test length(datafilelist1) == 1
+    @test length(datafilelist1) == 2
     @test length(datafilelist2) == 0
 
 end
 
 @testset "reading profile" begin
-    datafile = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.nc")
-    isfile(datafile) ? @debug("Already downloaded") : download("https://dox.ulg.ac.be/index.php/s/rtQcFZDGszhhtfV/download", datafile)
+    download_check(datafiletest1, datafiletest1URL)
+    download_check(datafiletest2, datafiletest2URL)
 
-    lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafile)
+    lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafiletest1)
     @test length(lon) == 8781 
     @test length(lat) == 8781 
     @test lon[1] == 165.55f0
@@ -29,25 +31,43 @@ end
     @test sum(isnan.(dohc)) == 7708
 end
 
+@testset "read data from a file list" begin
+    download_check(datafiletest1, datafiletest1URL)
+    download_check(datafiletest2, datafiletest2URL)
+    datafilelisttest = [datafiletest1, datafiletest2]
+    obslon, obslat, obsdepth, obsdates, T, S = ME4OH.read_data(datafilelisttest)
+
+    @test length(obslon) == 767726
+    @test length(obslon) == length(obslat)
+    @test length(obslon) == length(obsdepth)
+    @test length(obslon) == length(obsdates)
+
+    obslon[400] == 192.95f0
+    obslat[400] == -71.45f0
+    obsdepth[400] == 4509.18f0
+    obsdates[400] == DateTime(1979, 01, 30)
+    T[end] == 1.6556292f0
+    S[end] == 34.979248f0
+
+end
+
 @testset "get dates" begin
-    datafile = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.nc")
-    isfile(datafile) ? @debug("Already downloaded") : download("https://dox.ulg.ac.be/index.php/s/rtQcFZDGszhhtfV/download", datafile)
-    year = ME4OH.get_year(datafile)
+    download_check(datafiletest1, datafiletest1URL)
+    year = ME4OH.get_year(datafiletest1)
     @test year == 1979
 end
 
 @testset "vectorize" begin
-    datafile = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.nc")
-    isfile(datafile) ? @debug("Already downloaded") : download("https://dox.ulg.ac.be/index.php/s/rtQcFZDGszhhtfV/download", datafile)
+    download_check(datafiletest1, datafiletest1URL)
 
-    lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafile)
+    lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafiletest1)
     obslon, obslat, obsdates, obsdepth, T, S = ME4OH.vectorize_obs(lon, lat, dates, depth, T, S)
     
     @test length(obslon) == 354170
     @test sum(isnan.(obslat)) == 0
     @test obslat[22] == -74.75f0
     @test obsdepth[end] == 195.0f0
-    @test obsdates[end-100] == DateTime(1979, 1, 13)
+    @test obsdates[end-100] == DateTime(1979, 1, 14)
     
 end
 
