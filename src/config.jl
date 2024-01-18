@@ -14,6 +14,7 @@ function download_check(datafile::AbstractString, datafileURL::AbstractString)
     end
 end
 
+# Directories
 datadir = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/"
 bathydir = "../data/"
 datatestdir = "../data/test/"
@@ -23,6 +24,12 @@ figdir = "../figures/"
 isdir(outputdir) ? @debug("Directory already exists") : mkpath(outputdir)
 isdir(datatestdir) ? @debug("Directory already exists") : mkpath(datatestdir)
 isdir(figdir) ? @debug("Directory already exists") : mkpath(figdir)
+
+# Files for the unit testing
+datafiletest1 = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.nc")
+datafiletest1URL = make_dox_url("rtQcFZDGszhhtfV")
+datafiletest2 = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197902.update.nc")
+datafiletest2URL = make_dox_url("87O2XkvhagaAQbD")
 
 # GEBCO bathymetry
 gebco04file = joinpath(bathydir, "gebco_30sec_4.nc")

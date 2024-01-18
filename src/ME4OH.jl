@@ -10,13 +10,24 @@ using Glob
 
 Return the list of files that match the time period defined by `timeperiod` (range).
 
+__Note:__ the files with the `nonan` suffi are not included in the list.
+
 # Example
 ```julia-repl
 julia> get_filelist(datadir, 1995:2005)
+72-element Vector{String}:
+ "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.199501.update.nc"
+ "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.199502.update.nc"
+ ⋮
+ "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.200011.update.nc"
+ "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.200012.update.nc"
 ```
 """
-function get_filelist(datadir::AbstractString, timeperiod::UnitRange{Int64}=1900:2100)
-    datafilelist = Glob.glob("*.nc", datadir)
+function get_filelist(datadir::AbstractString, timeperiod::UnitRange{Int64}=1900:2100)::Vector{String}
+    datafilelist = Glob.glob("ofam3*.nc", datadir)
+
+    # Don't take the nono
+    filter!(x -> !occursin("nonan", x), datafilelist)
     yearlist = get_year.(datafilelist)
     # Select the good year period
     goodyear = findall((yearlist .<= timeperiod[end]) .& (yearlist .>= timeperiod[1]))
@@ -52,6 +63,44 @@ function read_profile(datafile::AbstractString)
 end
 
 """
+    read_data(datafilelist)
+
+Read all the observations from the list of files `datafilelist`, 
+as obtained with the function `get_filelist`.
+
+# Example
+```julia-repl
+julia> datafilelist = get_filelist("./data/ME4OHL/", 1999:2014)
+julia> obslon, obslat, obsdepth, obsdates, T, S = read_data(datafilelist)
+```
+"""
+function read_data(datafilelist::Vector{String})
+
+    obslonall = Float32[]
+    obslatall = Float32[]
+    obsdepthall = Float32[]
+    obsdatesall = DateTime[]
+    Tall = Float32[]
+    Sall = Float32[]
+
+    for datafile in datafilelist
+        lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafile)
+        lon[lon .< 20.] .+= 360;
+        obslon, obslat, obsdates, obsdepth, T, S = ME4OH.vectorize_obs(lon, lat, dates, depth, T, S);
+
+        append!(obslonall, obslon)
+        append!(obslatall, obslat)
+        append!(obsdepthall, obsdepth)
+        append!(obsdatesall, obsdates)
+        append!(Tall, T)
+        append!(Sall, S)
+    end
+    
+    return obslonall::Vector{Float32}, obslatall::Vector{Float32}, obsdepthall::Vector{Float32},
+        obsdatesall::Vector{DateTime}, Tall::Vector{Float32}, Sall::Vector{Float32}
+end
+
+"""
     vectorize_obs(lon, lat, dates, depth, T, S)
 
 Transform the observations (list of profiles) into vectors.
@@ -76,6 +125,7 @@ function vectorize_obs(lon, lat, dates, depth, T, S)
     obslon = obslon[goodT]
     obslat = obslat[goodT]
     obsdepth = obsdepth[goodT]
+    obsdates = obsdates[goodT]
     T = T[goodT]
     S = S[goodT]
     return obslon::Vector{Float32}, obslat::Vector{Float32}, obsdates::Vector{DateTime}, 
