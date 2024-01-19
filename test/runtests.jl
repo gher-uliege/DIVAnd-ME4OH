@@ -7,18 +7,20 @@ include("../src/ME4OH.jl")
 @testset "listing files" begin
     download_check(datafiletest1, datafiletest1URL)
     download_check(datafiletest2, datafiletest2URL)
+    download_check(datafiletest3, datafiletest3URL)
+
     datafilelist1 = ME4OH.get_filelist(datatestdir, 1970:2000)
     datafilelist2 = ME4OH.get_filelist(datatestdir, 1990:2000)
-    @test length(datafilelist1) == 2
+    @test length(datafilelist1) == 3
     @test length(datafilelist2) == 0
 
 end
 
 @testset "reading profile" begin
     download_check(datafiletest1, datafiletest1URL)
-    download_check(datafiletest2, datafiletest2URL)
+    download_check(datafiletest3, datafiletest3URL)
 
-    lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafiletest1)
+    lon, lat, dates, depth, T, S, dohc, dohc_mask = ME4OH.read_profile(datafiletest1)
     @test length(lon) == 8781 
     @test length(lat) == 8781 
     @test lon[1] == 165.55f0
@@ -29,6 +31,21 @@ end
     @test S[end-100] == 34.910427f0
     @test dohc[3, 10] == 1.5131863f0
     @test sum(isnan.(dohc)) == 7708
+    @test sum(dohc_mask) == length(lon) * 3
+
+    lon, lat, dates, depth, T, S, dohc, dohc_mask = ME4OH.read_profile(datafiletest3);
+    @test length(lon) == 8781 
+    @test length(lat) == 8781 
+    @test lon[1] == 165.55f0
+    @test lat[2] == -74.75f0
+    @test dates[10] == DateTime(1979, 1, 30)
+    @test size(T) == (51, 8781)
+    @test T[21] == -1.5671254f0
+    @test S[end-100] == 34.910427f0
+    @test dohc[3, 10] == 1.5131863f0
+    @test sum(isnan.(dohc)) == 7708
+        @test sum(dohc_mask) == 5398
+
 end
 
 @testset "read data from a file list" begin
