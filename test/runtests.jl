@@ -20,7 +20,7 @@ end
     download_check(datafiletest1, datafiletest1URL)
     download_check(datafiletest3, datafiletest3URL)
 
-    lon, lat, dates, depth, T, S, dohc, dohc_mask = ME4OH.read_profile(datafiletest1)
+    lon, lat, dates, depth, T, S, dohc, dohc_mask, bounds = ME4OH.read_profile(datafiletest1)
     @test length(lon) == 8781 
     @test length(lat) == 8781 
     @test lon[1] == 165.55f0
@@ -33,7 +33,7 @@ end
     @test sum(isnan.(dohc)) == 7708
     @test sum(dohc_mask) == length(lon) * 3
 
-    lon, lat, dates, depth, T, S, dohc, dohc_mask = ME4OH.read_profile(datafiletest3);
+    lon, lat, dates, depth, T, S, dohc, dohc_mask, bounds = ME4OH.read_profile(datafiletest3);
     @test length(lon) == 8781 
     @test length(lat) == 8781 
     @test lon[1] == 165.55f0
@@ -44,7 +44,8 @@ end
     @test S[end-100] == 34.910427f0
     @test dohc[3, 10] == 1.5131863f0
     @test sum(isnan.(dohc)) == 7708
-        @test sum(dohc_mask) == 5398
+    @test sum(dohc_mask) == 5398
+    @test bounds[:,1] = [0.0, 286.60898, 685.92676]
 
 end
 
