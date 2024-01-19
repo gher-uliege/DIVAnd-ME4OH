@@ -41,7 +41,7 @@ Read the coordinates and the measurements from a data file
 
 # Example
 ```julia-repl 
-julia> lon, lat, dates, vertical_levels, T, S, dohc
+julia> lon, lat, dates, vertical_levels, T, S, dohc, dohc_mask = read_profile(datafile)
 ```
 """
 function read_profile(datafile::AbstractString)
@@ -52,13 +52,24 @@ function read_profile(datafile::AbstractString)
         dates = Dates.DateTime.(time[1,:], time[2,:], time[3,:])
         vertical_levels = ds["ts_z"][:]
         depth_level_thickness = ds["ts_dz"][:]
+        bounds = ds["ts_bound"][:,:]
         T = ds["temp"][:,:]
         SSH = ds["eta_t"][:]
         SST = ds["sst"][:]
         S = ds["salt"][:,:]
         dohc = ds["dohc"][:,:]
-        return lon::Vector{Float32}, lat::Vector{Float32}, dates::typeof(dates), 
-        vertical_levels::Vector{Float32}, T::Matrix{Float32}, S::Matrix{Float32}, dohc::Matrix{Float32}
+
+        varlist = keys(ds)
+        if "dohc_mask_by_en4_maxdepth" in varlist
+            @debug("Reading dohc_mask_by_en4_maxdepth from file")
+            dohc_mask = Bool.(ds["dohc_mask_by_en4_maxdepth"][:,:])
+        else
+            dohc_mask = ones(Bool, size(dohc))
+        end
+
+        return lon::Vector{Float32}, lat::Vector{Float32}, dates::Vector{DateTime}, 
+        vertical_levels::Vector{Float32}, T::Matrix{Float32}, S::Matrix{Float32}, dohc::Matrix{Float32},
+        dohc_mask::BitMatrix, bounds::Matrix{Float32}
     end
 end
 
@@ -116,7 +127,7 @@ function vectorize_obs(lon, lat, dates, depth, T, S)
     nprofiles = length(lon)
     nlevels = length(depth)
 
-    obslon = repeat(lon, inner=nlevels)
+        
     obslat = repeat(lat, inner=nlevels)
     obsdepth = repeat(depth, outer=nprofiles)
     obsdates = repeat(dates, inner=nlevels);
@@ -130,6 +141,47 @@ function vectorize_obs(lon, lat, dates, depth, T, S)
     S = S[goodT]
     return obslon::Vector{Float32}, obslat::Vector{Float32}, obsdates::Vector{DateTime}, 
     obsdepth::Vector{Float32}, T::Vector{Float32}, S::Vector{Float32}
+end
+
+"""
+    vectorize_dohc(lon, lat, bounds, dates, dohc, dohc_mask)
+
+Generate vectors of coordinates and observations for the `dohc` variable (defined on 3 levels).
+The inputs are obtained with the function `read_profile`.
+
+# Example
+```julia-repl
+julia> lon, lat, dates, vertical_levels, T, S, dohc, dohc_mask, bounds = read_profile(datafile)
+julia> obslon, obslat, obsdepth, obsdates, obsval = vectorize_dohc(lon, lat, bounds, dates, dohc, dohc_mask);
+```
+"""
+function vectorize_dohc(lon::Vector{Float32}, lat::Vector{Float32}, bounds::Matrix{Float32}, 
+    dates::Vector{DateTime}, dohc::Matrix{Float32}, dohc_mask::BitMatrix)
+
+nprofiles = length(lon)
+ndepth = length(bounds[:,2])
+ntotal = nprofiles * ndepth
+lonrep = transpose(repeat(lon, outer=[1,ndepth]));
+latrep = transpose(repeat(lat, outer=[1,ndepth]));
+datesrep = Array{DateTime}(undef, ndepth, nprofiles)
+
+for iii = 1:3
+    datesrep[iii,:] = dates
+end
+depthrep = repeat(bounds[:,2], outer=[1, nprofiles])
+
+# Find good values 
+goodvalues = .!isnan.(dohc) .& dohc_mask
+@info("Found $(sum(goodvalues)) out of $(ntotal) values")
+
+obslon = lonrep[goodvalues]
+obslat = latrep[goodvalues]
+obsdates = datesrep[goodvalues]
+obsdepth = depthrep[goodvalues]
+obsval = dohc[goodvalues]
+
+return obslon::Vector{Float32}, obslat::Vector{Float32}, obsdepth::Vector{Float32},
+    obsdates::Vector{DateTime}, obsval::Vector{Float32}
 end
 
 """

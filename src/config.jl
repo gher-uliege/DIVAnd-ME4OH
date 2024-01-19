@@ -16,6 +16,8 @@ end
 
 # Directories
 datadir = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/"
+datadirextra = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/extra"
+
 bathydir = "../data/"
 datatestdir = "../data/test/"
 outputdir = "../output/"
@@ -30,6 +32,8 @@ datafiletest1 = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.1
 datafiletest1URL = make_dox_url("rtQcFZDGszhhtfV")
 datafiletest2 = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197902.update.nc")
 datafiletest2URL = make_dox_url("87O2XkvhagaAQbD")
+datafiletest3 = joinpath(datatestdir, "ofam3-jra55.all.EN.4.1.1.f.profiles.g10.197901.update.extra.nc")
+datafiletest3URL = make_dox_url("47L09AV3RQQuaLB")
 
 # GEBCO bathymetry
 gebco04file = joinpath(bathydir, "gebco_30sec_4.nc")
