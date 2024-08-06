@@ -10,21 +10,23 @@ using Glob
 
 Return the list of files that match the time period defined by `timeperiod` (range).
 
-__Note:__ the files with the `nonan` suffi are not included in the list.
+__Notes:__ 
+- the files with the `nonan` suffi are not included in the list;
+- only the files with the detrended anomalies (`danom`) are included.
 
 # Example
 ```julia-repl
 julia> get_filelist(datadir, 1995:2005)
 72-element Vector{String}:
- "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.199501.update.nc"
- "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.199502.update.nc"
+ "/media/ctroupin/T7 Shield/00006" ⋯ 83 bytes ⋯ "te.extra.danom.197901_201412.nc"
+ "/media/ctroupin/T7 Shield/00006" ⋯ 83 bytes ⋯ "te.extra.danom.197901_201412.nc"
  ⋮
- "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.200011.update.nc"
- "../data/" ⋯ 66 bytes ⋯ "f.profiles.g10.200012.update.nc"
+ "/media/ctroupin/T7 Shield/00006" ⋯ 83 bytes ⋯ "te.extra.danom.197901_201412.nc"
+ "/media/ctroupin/T7 Shield/00006" ⋯ 83 bytes ⋯ "te.extra.danom.197901_201412.nc"
 ```
 """
 function get_filelist(datadir::AbstractString, timeperiod::UnitRange{Int64}=1900:2100)::Vector{String}
-    datafilelist = Glob.glob("ofam3*.nc", datadir)
+    datafilelist = Glob.glob("ofam3-jra55.all.EN.4.1.1.f.profiles.g10.*.update.extra.danom.*.nc", datadir)
 
     # Don't take the nono
     filter!(x -> !occursin("nonan", x), datafilelist)
@@ -41,7 +43,7 @@ Read the coordinates and the measurements from a data file
 
 # Example
 ```julia-repl 
-julia> lon, lat, dates, vertical_levels, T, S, dohc, dohc_mask = read_profile(datafile)
+julia> lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = read_profile(datafile)
 ```
 """
 function read_profile(datafile::AbstractString)
@@ -58,6 +60,8 @@ function read_profile(datafile::AbstractString)
         SST = ds["sst"][:]
         S = ds["salt"][:,:]
         dohc = ds["dohc"][:,:]
+        adohc = ds["adohc"][:,:]
+        dadohc = ds["dadohc"][:,:]
 
         varlist = keys(ds)
         if "dohc_mask_by_en4_maxdepth" in varlist
@@ -68,8 +72,9 @@ function read_profile(datafile::AbstractString)
         end
 
         return lon::Vector{Float32}, lat::Vector{Float32}, dates::Vector{DateTime}, 
-        vertical_levels::Vector{Float32}, T::Matrix{Float32}, S::Matrix{Float32}, dohc::Matrix{Float32},
-        dohc_mask::BitMatrix, bounds::Matrix{Float32}
+        vertical_levels::Vector{Float32}, T::Matrix{Float32}, S::Matrix{Float32}, 
+        dohc::Matrix{Float32}, adohc::Matrix{Float32}, dadohc::Matrix{Float32},
+        dohc_mask::AbstractArray{Bool}, bounds::Matrix{Float32}, depth_level_thickness::Vector{Float32}
     end
 end
 
@@ -109,6 +114,42 @@ function read_data(datafilelist::Vector{String})
     
     return obslonall::Vector{Float32}, obslatall::Vector{Float32}, obsdepthall::Vector{Float32},
         obsdatesall::Vector{DateTime}, Tall::Vector{Float32}, Sall::Vector{Float32}
+end
+
+"""
+    read_data(datafilelist)
+
+Read all the observations from the list of files `datafilelist`, 
+as obtained with the function `get_filelist`.
+
+# Example
+```julia-repl
+julia> datafilelist = get_filelist("./data/ME4OHL/", 1999:2014)
+julia> obslon, obslat, obsdepth, obsdates, dohc = read_data_dohc(datafilelist)
+```
+"""
+function read_data_dohc(datafilelist::Vector{String})
+    obslonall = Float32[]
+    obslatall = Float32[]
+    obsdepthall = Float32[]
+    obsdatesall = DateTime[]
+    obsvalall = Float32[]
+
+    for datafile in datafilelist
+        lon, lat, dates, vertical_levels, T, S, dohc, dohc_mask, depthbounds = ME4OH.read_profile(datafile)
+        lon[lon .< 20.] .+= 360;
+        obslon, obslat, obsdepth, obsdates, obsval = ME4OH.vectorize_dohc(lon, lat, 
+        depthbounds, dates, dohc, dohc_mask)
+
+        append!(obslonall, obslon)
+        append!(obslatall, obslat)
+        append!(obsdepthall, obsdepth)
+        append!(obsdatesall, obsdates)
+        append!(obsvalall, obsval)
+    end
+
+    return obslonall::Vector{Float32}, obslatall::Vector{Float32}, obsdepthall::Vector{Float32},
+        obsdatesall::Vector{DateTime}, obsvalall::Vector{Float32}
 end
 
 """
@@ -156,7 +197,7 @@ julia> obslon, obslat, obsdepth, obsdates, obsval = vectorize_dohc(lon, lat, bou
 ```
 """
 function vectorize_dohc(lon::Vector{Float32}, lat::Vector{Float32}, bounds::Matrix{Float32}, 
-    dates::Vector{DateTime}, dohc::Matrix{Float32}, dohc_mask::BitMatrix)
+    dates::Vector{DateTime}, dohc::Matrix{Float32}, dohc_mask::AbstractArray{Bool})
 
 nprofiles = length(lon)
 ndepth = length(bounds[:,2])
@@ -229,7 +270,7 @@ end
 """
     make_fname(timeperiod, depthlayer, experiment; product="DIVAnd")
 
-Create the output netCDF file name based on the time period, the depthj layer and the experiment
+Create the output netCDF file name based on the time period, the depth layer and the experiment
 
 # Example
 ```julia-repl 
@@ -248,7 +289,7 @@ Create a time vector in the interval define by `timeperiod`, with a monthly reso
 
 # Example
 ```julia-repl 
-julia> nprofiles = get_profile_number(datafilelist)
+julia> datesr = get_timegrid(timeperiod
 ```
 """
 function get_timegrid(timeperiod::UnitRange{Int64})
@@ -258,14 +299,14 @@ function get_timegrid(timeperiod::UnitRange{Int64})
 end
 
 """
-    datetime2days(timegrid, dateref = dateref)
+    datetime2days(timeperiod, dateref = dateref)
 
 Convert the DataTime vector to a vector of Float64,
 to be used as an input in the netCDF creation.
 
 # Example
 ```julia-repl 
-julia> nprofiles = get_profile_number(datafilelist)
+julia> daygrid = datetime2days(timeperiod)
 ```
 """
 function datetime2days(timeperiod::UnitRange{Int64}; dateref = DateTime(1900, 1, 1))
@@ -301,16 +342,31 @@ end
 
 Create the netCDF file with the spatial (defined by `longrid` and `latgrid`) and temporal grid (defined by `timegrid`).
 
+According to the documentation `ME4OH_protocol_FINAL`: 
+> One NetCDF file for each depth layer
+
 # Example
 ```julia-repl 
 julia>
 ```
 """
-function create_netcdf_results(fname::AbstractString, longrid, latgrid, timegrid::Vector{DateTime}; valex=-999)
+function create_netcdf_results(fname::AbstractString, longrid, latgrid, timeperiod; valex=-999)
     
-    daygrid = datetime2days(timegrid);
+    daygrid = datetime2days(timeperiod);
+    globalattribs = OrderedDict(
+        "title" => "DIVAnd interpolated field",
+        "institute" => "GHER, FOCUS, University of Liège",
+        "Tool" => "DIVAnd",
+        "Tool version" => "2.7.11",
+        "Tool language" => "Julia",
+        "Author" => "Charles Troupin",
+        "Author email" => "ctroupin@uliege.be",
+        "Author orcID" => "0000-0002-0265-1021",
+        "Production date" => Dates.format(now(), "yyyy-mm-dd HH:MM:SS"),
+    )
 
-    NCDataset(fname, "c", attrib = OrderedDict("title" => "DIVAnd interpolated field")) do ds
+
+    NCDataset(fname, "c", attrib = globalattribs) do ds
 
     # Dimensions
     ds.dim["lat"] = length(latgrid)
@@ -349,7 +405,7 @@ function create_netcdf_results(fname::AbstractString, longrid, latgrid, timegrid
         "_FillValue"                => Float64(valex),
         "units"                     => "TJ/m^2",
 		"short_name"                => "ocean_heat_content_density",
-        "standard_name"                 => "sea_water_potential_temperature_expressed_as_heat_content"
+        "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
     ))
 
     return nothing

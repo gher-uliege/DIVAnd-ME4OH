@@ -1,4 +1,8 @@
 using Downloads
+using PyCall
+mpl = pyimport("matplotlib")
+mpl.style.use("./me4oh.mplstyle")
+
 
 function make_dox_url(fileid::AbstractString)
     doxurl = "https://dox.uliege.be/index.php/s/$(fileid)/download"
@@ -43,6 +47,8 @@ gebco08fileURL = make_dox_url("U0pqyXhcQrXjEUX")
 gebco16file = joinpath(bathydir, "gebco_30sec_16.nc")
 gebco16fileURL = make_dox_url("U0pqyXhcQrXjEUX")
 
+# The following parameter values are taken from the shared document 
+# "ME4OH_protocol_FINAL"
 
 cp0 = 3989.244      # J/kg/K is heat capacity
 rho0= 1030          # kg/m3 is density
@@ -51,6 +57,11 @@ rho0= 1030          # kg/m3 is density
 timeperiod1 = 1979:2014 # (whole period) 
 timeperiod2 = 2005:2014 # (Argo period) 
 timeperiod3 = 1993:2014 # (satellite period)
+
+# Directory path (according to time period)
+thetimeperiod = timeperiod1
+datadirdisk = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1/$(thetimeperiod[1])-$(thetimeperiod[end])"
+isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
 
 # Depth layers
 depthlayer1 = [0, 286.6]     # m layer
