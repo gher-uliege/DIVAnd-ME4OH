@@ -6,8 +6,11 @@
 (ME4OH) pkg> add PyPlot
 (ME4OH) pkg> add IJulia
 
-## Parameter optimisation
+## Questions
 
+- What depth level should be considered for the mask?
+
+## Parameter optimisation
 
 Cross validation
 
