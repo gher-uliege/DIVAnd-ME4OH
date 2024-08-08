@@ -3,7 +3,6 @@ using PyCall
 mpl = pyimport("matplotlib")
 mpl.style.use("./me4oh.mplstyle")
 
-
 function make_dox_url(fileid::AbstractString)
     doxurl = "https://dox.uliege.be/index.php/s/$(fileid)/download"
     return doxurl::String
@@ -24,10 +23,10 @@ datadirextra = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/ext
 
 bathydir = "../data/"
 datatestdir = "../data/test/"
-outputdir = "../output/"
+mainoutputdir = "../output/"
 figdir = "../figures/"
 
-isdir(outputdir) ? @debug("Directory already exists") : mkpath(outputdir)
+isdir(mainoutputdir) ? @debug("Directory already exists") : mkpath(mainoutputdir)
 isdir(datatestdir) ? @debug("Directory already exists") : mkpath(datatestdir)
 isdir(figdir) ? @debug("Directory already exists") : mkpath(figdir)
 
