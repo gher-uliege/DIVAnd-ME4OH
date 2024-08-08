@@ -274,10 +274,10 @@ Create the output netCDF file name based on the time period, the depth layer and
 
 # Example
 ```julia-repl 
-julia> nprofiles = get_profile_number(datafilelist)
+julia> make_fname(2005:2014, [286.6, 685.9], "A")
 ```
 """
-function make_fname(timeperiod, depthlayer, experiment; product="DIVAnd")
+function make_fname(timeperiod::UnitRange{Int64}, depthlayer::Vector{Float64}, experiment; product::String="DIVAnd")
     fname = "OHC_$(timeperiod[1])_$(timeperiod[end])_lev0_$(depthlayer[end])_exp$(experiment)_$(product).nc"
     return fname
 end
@@ -392,7 +392,7 @@ function create_netcdf_results(fname::AbstractString, longrid, latgrid, timeperi
 
     defVar(ds, "time", daygrid, ("time",), attrib = OrderedDict(
         "_CoordinateAxisType"       => "Time",
-        "actual_range"              => [Dates.format(timegrid[1], dateformat"yyyy-mm-dd"), Dates.format(timegrid[end], dateformat"yyyy-mm-dd")],
+        "actual_range"              => [Dates.format(Date(timeperiod[1],1,1), dateformat"yyyy-mm-dd"), Dates.format(Date(timeperiod[2],12,31), dateformat"yyyy-mm-dd")],
         "axis"                      => "T",
         "calendar"                  => "Gregorian",
         "long_name"                 => "Time of measurement",

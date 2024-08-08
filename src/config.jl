@@ -58,15 +58,11 @@ timeperiod1 = 1979:2014 # (whole period)
 timeperiod2 = 2005:2014 # (Argo period) 
 timeperiod3 = 1993:2014 # (satellite period)
 
-# Directory path (according to time period)
-thetimeperiod = timeperiod1
-datadirdisk = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1/$(thetimeperiod[1])-$(thetimeperiod[end])"
-isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
-
 # Depth layers
 depthlayer1 = [0, 286.6]     # m layer
 depthlayer2 = [286.6, 685.9]  # m layer (i.e. starting from the lower bound of layer 286.6m, i.e. not including the layer associated with nominal model depth 286.6m)
 depthlayer3 = [685.9, 1985.3]
+depthlayers = [depthlayer1, depthlayer2, depthlayer3]
 
 # Domain grid
 longrid = 20.5:1.0:379.5 
