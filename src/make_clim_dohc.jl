@@ -8,6 +8,7 @@ using Test
 using PyPlot
 using Statistics
 using DelimitedFiles
+using Glob
 const plt = PyPlot
 include("./ME4OH.jl")
 include("./config.jl")
@@ -48,7 +49,7 @@ for (iilayer, layer) in enumerate(depthlayers)
     #ME4OH.create_netcdf_results(outputfile, varname, longrid, latgrid, thetimeperiod)
 
     # Loop on the month
-    for mm = 1:12
+    for mm = 1:1
 
         @info("Working on month $(mm)/12)")
         
@@ -58,15 +59,16 @@ for (iilayer, layer) in enumerate(depthlayers)
 
         lon, lat, dates, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = ME4OH.read_profile(datafilelistmonth);
 
-        @info("Number of observations: $(length(lon))")
+        @info("Total number of observations: $(length(lon))")
         
         goodvalues = .!(isnan.(dohc[iilayer,:]))
 
-        #fi, s = DIVAndrun(mask, (pm, pn), (xi, yi), (Float64.(lon[goodvalues]), Float64.(lat[goodvalues])), 
-        #    Float64.(dohc[iilayer, goodvalues]), L, epsilon2, moddim=[1,0])
+        @info("Number of good observations: $(sum(goodvalues))")
 
-        #@time lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, ts_bounds, depth_level_thickness = 
-        #ME4OH.read_profile(datafile);
+
+        @time fi, s = DIVAndrun(mask, (pm, pn), (xi, yi), (Float64.(lon[goodvalues]), Float64.(lat[goodvalues])), 
+            Float64.(dohc[iilayer, goodvalues]), L, epsilon2, moddim=[1,0])
+
 
     end
 

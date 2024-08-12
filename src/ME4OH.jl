@@ -28,11 +28,12 @@ julia> get_filelist(datadir, 1995:2005)
 function get_filelist(datadir::AbstractString, timeperiod::UnitRange{Int64}=1900:2100)::Vector{String}
     datafilelist = Glob.glob("ofam3-jra55.all.EN.4.1.1.f.profiles.g10.*.update.extra.danom.*.nc", datadir)
 
-    # Don't take the nono
+    # Don't take the nonan files
     filter!(x -> !occursin("nonan", x), datafilelist)
     yearlist = get_year.(datafilelist)
     # Select the good year period
     goodyear = findall((yearlist .<= timeperiod[end]) .& (yearlist .>= timeperiod[1]))
+    @info("Found $(length(datafilelist[goodyear])) files")
     return datafilelist[goodyear]
 end
 
@@ -108,7 +109,9 @@ function read_profile(datafilelist::Vector{String})
         append!(lonall, lon)
         append!(latall, lat)
         append!(datesall, dates)
-        dohc = hcat(dohcall, dohc)
+        dohcall = hcat(dohcall, dohc)
+        # adohcall = hcat(adohcall, adohc)
+        # dadohcall = hcat(dadohcall, dadohc)
         
     end
 
