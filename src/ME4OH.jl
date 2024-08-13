@@ -56,10 +56,10 @@ function read_profile(datafile::AbstractString)
         vertical_levels = ds["ts_z"][:]
         depth_level_thickness = ds["ts_dz"][:]
         bounds = ds["ts_bound"][:,:]
-        T = ds["temp"][:,:]
-        SSH = ds["eta_t"][:]
-        SST = ds["sst"][:]
-        S = ds["salt"][:,:]
+        #T = ds["temp"][:,:]
+        #SSH = ds["eta_t"][:]
+        #SST = ds["sst"][:]
+        #S = ds["salt"][:,:]
         dohc = ds["dohc"][:,:]
         adohc = ds["adohc"][:,:]
         dadohc = ds["dadohc"][:,:]
@@ -73,20 +73,20 @@ function read_profile(datafile::AbstractString)
         end
 
         return lon::Vector{Float32}, lat::Vector{Float32}, dates::Vector{DateTime}, 
-        vertical_levels::Vector{Float32}, T::Matrix{Float32}, S::Matrix{Float32}, 
+        # vertical_levels::Vector{Float32}, #T::Matrix{Float32}, S::Matrix{Float32}, 
         dohc::Matrix{Float32}, adohc::Matrix{Float32}, dadohc::Matrix{Float32},
         dohc_mask::AbstractArray{Bool}, bounds::Matrix{Float32}, depth_level_thickness::Vector{Float32}
     end
 end
 
 """
-    read_profile(datafile)
+    read_profile(datafilelist)
 
-Read the coordinates and the measurements from a data file
+Read the coordinates and the measurements from a list of files
 
 # Example
 ```julia-repl 
-julia> lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = read_profile(datafile)
+julia> lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = read_profile(datafilelistmonth)
 ```
 """
 function read_profile(datafilelist::Vector{String})
@@ -100,11 +100,11 @@ function read_profile(datafilelist::Vector{String})
     dadohcall = Array{Float32}(undef, 3, 0)
     dohc_maskall = Array{Bool}(undef, 3, 0)
 
-    _, _, _, _, _, _, _, _, _, _, bounds, depth_level_thickness = read_profile(datafilelist[1])
+    _, _, _, _, _, _, _, bounds, depth_level_thickness = read_profile(datafilelist[1])
 
     for datafile in datafilelist
 
-        lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, _, _ = read_profile(datafile);
+        lon, lat, dates, dohc, adohc, dadohc, dohc_mask, _, _ = read_profile(datafile);
 
         append!(lonall, lon)
         append!(latall, lat)
@@ -142,7 +142,7 @@ function read_data(datafilelist::Vector{String})
     Sall = Float32[]
 
     for datafile in datafilelist
-        lon, lat, dates, depth, T, S, dohc = ME4OH.read_profile(datafile)
+        lon, lat, dates, depth, T, S, dohc = read_profile(datafile)
         lon[lon .< 20.] .+= 360;
         obslon, obslat, obsdates, obsdepth, T, S = ME4OH.vectorize_obs(lon, lat, dates, depth, T, S);
 
@@ -178,9 +178,9 @@ function read_data_dohc(datafilelist::Vector{String})
     obsvalall = Float32[]
 
     for datafile in datafilelist
-        lon, lat, dates, vertical_levels, T, S, dohc, dohc_mask, depthbounds = ME4OH.read_profile(datafile)
+        lon, lat, dates, vertical_levels, T, S, dohc, dohc_mask, depthbounds = read_profile(datafile)
         lon[lon .< 20.] .+= 360;
-        obslon, obslat, obsdepth, obsdates, obsval = ME4OH.vectorize_dohc(lon, lat, 
+        obslon, obslat, obsdepth, obsdates, obsval = vectorize_dohc(lon, lat, 
         depthbounds, dates, dohc, dohc_mask)
 
         append!(obslonall, obslon)
@@ -417,12 +417,12 @@ julia> create_netcdf_results("results.nc", "dohc", -180:0.5:180., -75.:0.5:75., 
 ```
 """
 function create_netcdf_results(fname::AbstractString, varname::String, longrid::StepRangeLen, latgrid::StepRangeLen, timeperiod::UnitRange{Int64}; 
-    valex=-999)
+    valex=-999, title::AbstractString="DIVAnd interpolated field")
     
     daygrid = datetime2days(timeperiod);
     globalattribs = OrderedDict(
         "creation_date" => Dates.format(now(), "yyyy-mm-dd HH:MM:SS"),
-        "title" => "DIVAnd interpolated field",
+        "title" => title,
         "institute" => "GHER, FOCUS, University of Liège",
         "Tool" => "DIVAnd",
         "Tool version" => "2.7.11",
@@ -476,6 +476,15 @@ function create_netcdf_results(fname::AbstractString, varname::String, longrid::
             "short_name"                => "ocean_heat_content_density",
             "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
         ))
+
+        defVar(ds, varname * "_error", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "1",
+            "short_name"                => "ocean_heat_content_density_error",
+            "long_name"                 => "Relative error on the heat content density",
+            "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
+        ))
+
     elseif varname == "adohc"
         defVar(ds, varname, Float64, ("lon", "lat", "time"), attrib = OrderedDict(
             "_FillValue"                => Float64(valex),
@@ -483,6 +492,15 @@ function create_netcdf_results(fname::AbstractString, varname::String, longrid::
             "short_name"                => "ocean_heat_content_density_anomaly",
             "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
         ))
+
+        defVar(ds, varname * "_error", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "1",
+            "short_name"                => "ocean_heat_content_density_anomaly_error",
+            "long_name"                 => "Relative error on the heat content density anomaly",
+            "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
+        ))
+
     elseif varname == "dadohc"
         defVar(ds, varname, Float64, ("lon", "lat", "time"), attrib = OrderedDict(
             "_FillValue"                => Float64(valex),
@@ -490,6 +508,15 @@ function create_netcdf_results(fname::AbstractString, varname::String, longrid::
             "short_name"                => "detrended_ocean_heat_content_density_anomaly",
             "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
         ))
+
+        defVar(ds, varname * "_error", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "GJ/m^2",
+            "short_name"                => "detrended_ocean_heat_content_density_anomaly_error",
+            "long_name"                 => "Relative error on the heat content density detrended anomaly",
+            "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
+        ))
+
     else 
         @error("Variable $(varname) does not exist")
     end
@@ -510,13 +537,16 @@ Create the netCDF file with the spatial (defined by `longrid` and `latgrid`) tha
 julia> create_netcdf_climatology("results.nc", "dohc", -180:0.5:180., -75.:0.5:75., 2005:2014)
 ```
 """
-function create_netcdf_climatology(fname::AbstractString, varname::String, longrid::StepRangeLen, latgrid::StepRangeLen, timeperiod::UnitRange{Int64}; 
-    valex=-999)
+function create_netcdf_climatology(fname::AbstractString, varname::String, 
+    longrid::StepRangeLen, latgrid::StepRangeLen, timeperiod::UnitRange{Int64}; 
+    valex=-999, title::AbstractString="DIVAnd interpolated field")
     
-    daygrid = datetime2days(timeperiod);
+    meanyear = Int64(floor(0.5 * (timeperiod[1] + timeperiod[end])))
+    daygrid = datetime2days(meanyear:meanyear);
+
     globalattribs = OrderedDict(
         "creation_date" => Dates.format(now(), "yyyy-mm-dd HH:MM:SS"),
-        "title" => "DIVAnd interpolated field",
+        "title" => title,
         "institute" => "GHER, FOCUS, University of Liège",
         "Tool" => "DIVAnd",
         "Tool version" => "2.7.11",
@@ -562,16 +592,26 @@ function create_netcdf_climatology(fname::AbstractString, varname::String, longr
         "units"                     => "days since 1900-01-01T00:00:00Z",
     ))
 
-    defVar(ds,"climatology_bounds", Float64, ("nv", "time"), attrib = OrderedDict(
+    climatology_bounds = get_clim_bounds(timeperiod)
+
+    defVar(ds,"climatology_bounds", climatology_bounds, ("nv", "time"), attrib = OrderedDict(
         "units"                     => "days since 1900-01-01 00:00:00",
     ))
 
 
     # Create variable storing the gridded field
-        defVar(ds, "dohc", Float64, ("lon", "lat", "level_bound", "time"), attrib = OrderedDict(
+    defVar(ds, "dohc", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
             "_FillValue"                => Float64(valex),
             "units"                     => "TJ/m^2",
             "short_name"                => "ocean_heat_content_density",
+            "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
+    ))
+
+    defVar(ds, "dohc_error", Float64, ("lon", "lat", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "1",
+            "short_name"                => "ocean_heat_content_density",
+            "long_name"                 => "Relative error on the heat content density",
             "standard_name"             => "sea_water_potential_temperature_expressed_as_heat_content"
     ))
     
