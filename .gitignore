@@ -1,4 +1,8 @@
+# netCDF
+*.nc
+
 data/
+figures/
 
 .ipynb_checkpoints/
 src/.ipynb_checkpoints/
