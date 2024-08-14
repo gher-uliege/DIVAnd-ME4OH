@@ -121,6 +121,79 @@ function read_profile(datafilelist::Vector{String})
 end
 
 """
+    read_TS_data(datafile)
+
+Read the coordinates and the temperature and salinity measurements from a data file
+
+# Example
+```julia-repl 
+julia> lon, lat, dates, depth, T, S, depth_level_thickness = read_TS_data(datafile)
+```
+"""
+function read_TS_data(datafile::AbstractString)
+    NCDataset(datafile, "r") do ds
+        lon = Float64.(ds["ts_lon"][:])
+        lat = Float64.(ds["ts_lat"][:])
+        time = ds["en4_ymd"][:,:]
+        dates = Dates.DateTime.(time[1,:], time[2,:], time[3,:])
+        depth = Float64.(ds["ts_z"][:])
+        depth_level_thickness = Float64.(ds["ts_dz"][:])
+        T = Float64.(ds["temp"][:,:])
+        S = Float64.(ds["salt"][:,:])
+   
+        varlist = keys(ds)
+        if "dohc_mask_by_en4_maxdepth" in varlist
+            @debug("Reading dohc_mask_by_en4_maxdepth from file")
+            dohc_mask = Bool.(ds["dohc_mask_by_en4_maxdepth"][:,:])
+        else
+            dohc_mask = ones(Bool, size(dohc))
+        end
+
+        obslon, obslat, obsdates, obsdepth, obsval1, obsval2 = vectorize_obs(lon, lat, dates, depth, T, S)
+
+        return obslon::Vector{Float64}, obslat::Vector{Float64}, obsdates::Vector{DateTime}, 
+        obsdepth::Vector{Float64}, obsval1::Vector{Float64}, obsval2::Vector{Float64}, 
+        depth_level_thickness::Vector{Float64}
+    end
+end
+
+"""
+    read_TS_data(datafilelist)
+
+Read the coordinates and the temperature and salinity measurements from a list of data files
+
+# Example
+```julia-repl 
+julia> lon, lat, dates, depth, T, S, depth_level_thickness = read_TS_data(datafilelist)
+```
+"""
+function read_TS_data(datafilelist::Vector)
+
+    obslon = Float64[]
+    obslat = Float64[]
+    obsdepth = Float64[]
+    obsdates = DateTime[]
+    obsval1 = Float64[]
+    obsval2 = Float64[]
+
+    for datafile in datafilelist
+        lon, lat, dates, depth, T, S, depth_level_thickness = read_TS_data(datafile)
+        append!(obslon, lon)
+        append!(obslat, lat)
+        append!(obsdepth, depth)
+        append!(obsdates, dates)
+        append!(obsval1, T)
+        append!(obsval2, S)
+    end
+
+    return obslon::Vector{Float64}, obslat::Vector{Float64}, obsdates::Vector{DateTime}, 
+    obsdepth::Vector{Float64}, obsval1::Vector{Float64}, obsval2::Vector{Float64}#, 
+    #depth_level_thickness::Vector{Float64}
+
+end
+
+
+"""
     read_data(datafilelist)
 
 Read all the observations from the list of files `datafilelist`, 
@@ -209,8 +282,8 @@ function vectorize_obs(lon, lat, dates, depth, T, S)
 
     nprofiles = length(lon)
     nlevels = length(depth)
-
-        
+    
+    obslon = repeat(lon, inner=nlevels)
     obslat = repeat(lat, inner=nlevels)
     obsdepth = repeat(depth, outer=nprofiles)
     obsdates = repeat(dates, inner=nlevels);
@@ -222,8 +295,8 @@ function vectorize_obs(lon, lat, dates, depth, T, S)
     obsdates = obsdates[goodT]
     T = T[goodT]
     S = S[goodT]
-    return obslon::Vector{Float32}, obslat::Vector{Float32}, obsdates::Vector{DateTime}, 
-    obsdepth::Vector{Float32}, T::Vector{Float32}, S::Vector{Float32}
+    return obslon::Vector{Float64}, obslat::Vector{Float64}, obsdates::Vector{DateTime}, 
+    obsdepth::Vector{Float64}, T::Vector{Float64}, S::Vector{Float64}
 end
 
 """
@@ -282,7 +355,7 @@ function me4oh_dohc(T, z)
 
     rho0 = 1030    # kg/m^3
     Cp0 = 3989.244 # J/(kg K)
-    T0 = 273.15    # Celcius -> Kelvin
+    T0 = 273.15    # Celsius -> Kelvin
     tera = 10^12   # 
     scale = Cp0 * rho0/tera
 
@@ -619,6 +692,210 @@ function create_netcdf_climatology(fname::AbstractString, varname::String,
     return nothing
     end;
 end
+
+"""
+    create_netcdf_climatology4D(fname, longrid, latgrid, depthgrid, timegrid)
+
+Create the netCDF file with the spatial (defined by `longrid`, `latgrid`, `depthgrid`) that will store 
+the monthly climatology.
+
+# Example
+```julia-repl 
+julia> create_netcdf_climatology("results.nc", -180:0.5:180., -75.:0.5:75., [2.5, 5., 10., 25.], 2005:2014)
+```
+"""
+function create_netcdf_climatology4D(fname::AbstractString, longrid::StepRangeLen, latgrid::StepRangeLen, 
+    depthgrid::Vector{Float64}, timeperiod::UnitRange{Int64}; 
+    valex=-999, title::AbstractString="DIVAnd temperature interpolated field")
+    
+    meanyear = Int64(floor(0.5 * (timeperiod[1] + timeperiod[end])))
+    daygrid = datetime2days(meanyear:meanyear);
+
+    globalattribs = OrderedDict(
+        "creation_date" => Dates.format(now(), "yyyy-mm-dd HH:MM:SS"),
+        "title" => title,
+        "institute" => "GHER, FOCUS, University of Liège",
+        "Tool" => "DIVAnd",
+        "Tool version" => "2.7.11",
+        "Julia version" => "1.11.0-rc2",
+        "Author" => "Charles Troupin",
+        "Author email" => "ctroupin@uliege.be",
+        "Author orcID" => "0000-0002-0265-1021",  
+    )
+
+    NCDataset(fname, "c", attrib = globalattribs) do ds
+
+    # Dimensions
+    ds.dim["depth"] = length(depthgrid)
+    ds.dim["nv"] = 2
+    ds.dim["lat"] = length(latgrid)
+    ds.dim["lon"] = length(longrid)
+    ds.dim["time"] = 12
+
+    # Declare variables
+    defVar(ds, "lat", latgrid, ("lat",), attrib = OrderedDict(
+        "axis"                      => "Y",
+        "actual_range"              => [minimum(latgrid), maximum(latgrid)],
+        "long_name"                 => "Latitude",
+        "standard_name"             => "latitude",
+        "units"                     => "degrees_north",
+    ))
+
+    defVar(ds, "lon", longrid, ("lon",), attrib = OrderedDict(
+        "axis"                      => "X",
+        "actual_range"              => [minimum(longrid), maximum(longrid)],
+        "long_name"                 => "Longitude",
+        "standard_name"             => "longitude",
+        "units"                     => "degrees_east",
+    ))
+
+    defVar(ds, "time", daygrid, ("time",), attrib = OrderedDict(
+        "_CoordinateAxisType"       => "Time",
+        "axis"                      => "T",
+        "calendar"                  => "Gregorian",
+        "long_name"                 => "Time of measurement",
+        "standard_name"             => "time",
+        "time_origin"               => "01-JAN-1900 00:00:00",
+        "units"                     => "days since 1900-01-01T00:00:00Z",
+    ))
+
+
+    defVar(ds, "depth", depthgrid, ("depth",), attrib = OrderedDict(
+        "_CoordinateAxisType"       => "Depth",
+        "axis"                      => "Z",
+        "long_name"                 => "Depth of measurement",
+        "standard_name"             => "depth",
+        "units"                     => "m",
+    ))
+
+    climatology_bounds = get_clim_bounds(timeperiod)
+
+    defVar(ds,"climatology_bounds", climatology_bounds, ("nv", "time"), attrib = OrderedDict(
+        "units"                     => "days since 1900-01-01 00:00:00",
+    ))
+
+    # Create variable storing the gridded field
+    defVar(ds, "temperature", Float64, ("lon", "lat", "depth", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "degree_Celsius",
+            "short_name"                => "sea_water_temperature",
+            "standard_name"             => "sea_water_temperature"
+    ))
+
+    defVar(ds, "temperature_error", Float64, ("lon", "lat", "depth", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "1",
+            "short_name"                => "sea water temperature error",
+            "long_name"                 => "Relative error on the sea water temperature",
+            "standard_name"             => "sea_water_temperature"
+    ))
+    
+
+    return nothing
+    end;
+end
+
+
+"""
+    create_netcdf_product4D(fname, longrid, latgrid, depthgrid, timegrid)
+
+Create the netCDF file with the spatial (defined by `longrid`, `latgrid`, `depthgrid`) that will store 
+the monthly climatology.
+
+# Example
+```julia-repl 
+julia> create_netcdf_product4D("results.nc", -180:0.5:180., -75.:0.5:75., [2.5, 5., 10., 25.], 2005:2014)
+```
+"""
+function create_netcdf_product4D(fname::AbstractString, longrid::StepRangeLen, latgrid::StepRangeLen, 
+    depthgrid::Vector{Float64}, timeperiod::UnitRange{Int64}; 
+    valex=-999, title::AbstractString="DIVAnd temperature interpolated field")
+    
+    daygrid = datetime2days(timeperiod);
+
+    globalattribs = OrderedDict(
+        "creation_date" => Dates.format(now(), "yyyy-mm-dd HH:MM:SS"),
+        "title" => title,
+        "institute" => "GHER, FOCUS, University of Liège",
+        "Tool" => "DIVAnd",
+        "Tool version" => "2.7.11",
+        "Julia version" => "1.11.0-rc2",
+        "Author" => "Charles Troupin",
+        "Author email" => "ctroupin@uliege.be",
+        "Author orcID" => "0000-0002-0265-1021",  
+    )
+
+    NCDataset(fname, "c", attrib = globalattribs) do ds
+
+    # Dimensions
+    ds.dim["depth"] = length(depthgrid)
+    ds.dim["nv"] = 2
+    ds.dim["lat"] = length(latgrid)
+    ds.dim["lon"] = length(longrid)
+    ds.dim["time"] = Inf
+
+    # Declare variables
+    defVar(ds, "lat", latgrid, ("lat",), attrib = OrderedDict(
+        "axis"                      => "Y",
+        "actual_range"              => [minimum(latgrid), maximum(latgrid)],
+        "long_name"                 => "Latitude",
+        "standard_name"             => "latitude",
+        "units"                     => "degrees_north",
+    ))
+
+    defVar(ds, "lon", longrid, ("lon",), attrib = OrderedDict(
+        "axis"                      => "X",
+        "actual_range"              => [minimum(longrid), maximum(longrid)],
+        "long_name"                 => "Longitude",
+        "standard_name"             => "longitude",
+        "units"                     => "degrees_east",
+    ))
+
+    defVar(ds, "time", daygrid, ("time",), attrib = OrderedDict(
+        "_CoordinateAxisType"       => "Time",
+        "axis"                      => "T",
+        "calendar"                  => "Gregorian",
+        "long_name"                 => "Time of measurement",
+        "standard_name"             => "time",
+        "time_origin"               => "01-JAN-1900 00:00:00",
+        "units"                     => "days since 1900-01-01T00:00:00Z",
+    ))
+
+
+    defVar(ds, "depth", depthgrid, ("depth",), attrib = OrderedDict(
+        "_CoordinateAxisType"       => "Depth",
+        "axis"                      => "Z",
+        "long_name"                 => "Depth of measurement",
+        "standard_name"             => "depth",
+        "units"                     => "m",
+    ))
+
+    climatology_bounds = get_clim_bounds(timeperiod)
+
+    defVar(ds,"climatology_bounds", climatology_bounds, ("nv", "time"), attrib = OrderedDict(
+        "units"                     => "days since 1900-01-01 00:00:00",
+    ))
+
+    # Create variable storing the gridded field
+    defVar(ds, "temperature", Float64, ("lon", "lat", "depth", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "degree_Celsius",
+            "short_name"                => "sea_water_temperature",
+            "standard_name"             => "sea_water_temperature"
+    ))
+
+    defVar(ds, "temperature_error", Float64, ("lon", "lat", "depth", "time"), attrib = OrderedDict(
+            "_FillValue"                => Float64(valex),
+            "units"                     => "1",
+            "short_name"                => "sea water temperature error",
+            "long_name"                 => "Relative error on the sea water temperature",
+            "standard_name"             => "sea_water_temperature"
+    ))
+    
+    return nothing
+    end;
+end
+
 
 """
     add_residuals(outputfile::AbstractString, datafilelist)

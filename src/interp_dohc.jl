@@ -12,13 +12,13 @@ const plt = PyPlot
 include("./ME4OH.jl")
 include("./config.jl")
 
-varname = "dadohc"
-casename = "optimize-L"
+varname = "adohc"
+casename = "fixed-L"
 experimentname = "A"
-optimize_L = true
+optimize_L = false
 optimize_eps = false
 
-thetimeperiod = timeperiod2
+thetimeperiod = timeperiod1
 datadirdisk = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1/$(thetimeperiod[1])-$(thetimeperiod[end])"
 isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
 
@@ -31,6 +31,9 @@ _, (pm, pn), (xi, yi) = DIVAnd.DIVAnd_rectdom(longrid, latgrid)
 
 outputdir = joinpath(mainoutputdir, "experiment-$(experimentname)", casename, varname)
 mkpath(outputdir)
+
+@info("Interpolating variable $(varname) over time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
+@info("Experiment $(experimentname)")
 
 # Loop on the 3 layers
 for (iilayer, layer) in enumerate(depthlayers)
@@ -51,8 +54,7 @@ for (iilayer, layer) in enumerate(depthlayers)
     for (iii, datafile) in enumerate(datafilelist)
 
         @info("Working on file $(basename(datafile)) ($(iii)/$(nfiles))")
-        @time lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, ts_bounds, depth_level_thickness = 
-        ME4OH.read_profile(datafile);
+        lon, lat, dates, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = ME4OH.read_profile(datafile);
 
         if varname == "adohc"
             var2interp = adohc
@@ -71,7 +73,7 @@ for (iilayer, layer) in enumerate(depthlayers)
             Float64.(var2interp[1,goodvalues]), layer[1])
             L = (lenxy[1], lenxy[1])
         else
-            L = (15., 15.)
+            L = (5., 5.)
         end
 
         epsilon2 = 10.
@@ -85,12 +87,14 @@ for (iilayer, layer) in enumerate(depthlayers)
             @info("Lopt = $(L_opt), eps_opt = $(eps_opt)")
         end
         
-        
         fi, s = DIVAndrun(mask, (pm, pn), (xi, yi), (Float64.(lon[goodvalues]), Float64.(lat[goodvalues])), 
-            Float64.(var2interp[iilayer, goodvalues]), L, 10., moddim=[1,0])
+            Float64.(var2interp[iilayer, goodvalues]), L, epsilon2, moddim=[1,0])
+        cpme = DIVAnd_cpme(mask, (pm, pn), (xi, yi), (lon[goodvalues], lat[goodvalues]), 
+            var2interp[iilayer, goodvalues], L, epsilon2, moddim=[1,0]);
 
         NCDataset(outputfile, "a") do ds
             ds[varname][:,:,iii] = fi
+            ds[varname*"_error"][:,:,iii] = cpme
         end
         
     end

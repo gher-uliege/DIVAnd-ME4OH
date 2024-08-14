@@ -1,5 +1,7 @@
 using Downloads
 using PyCall
+using PyPlot
+const plt = PyPlot
 mpl = pyimport("matplotlib")
 mpl.style.use("./me4oh.mplstyle")
 

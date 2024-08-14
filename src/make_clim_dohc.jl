@@ -59,15 +59,21 @@ for (iilayer, layer) in enumerate(depthlayers)
     # (one file per depth)
     fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)")
     outputfileprod = joinpath(outputdir, fname)
-    isfile(outputfileprod) ? rm(outputfileprod) : @debug("ok") 
-    ME4OH.create_netcdf_results(outputfileprod, "dohc", longrid, latgrid, thetimeperiod)
+    #isfile(outputfileprod) ? rm(outputfileprod) : @debug("ok") 
+    #ME4OH.create_netcdf_results(outputfileprod, "dohc", longrid, latgrid, thetimeperiod)
 
     # Create a netCDF for the climatology
-    # (also one per depth)
     fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)-clim")
     outputfileclim = joinpath(outputdir, fname)
-    isfile(outputfileclim) ? rm(outputfileclim) : @debug("ok") 
-    ME4OH.create_netcdf_climatology(outputfileclim, "dohc", longrid, latgrid, thetimeperiod)
+    #isfile(outputfileclim) ? rm(outputfileclim) : @debug("ok") 
+    #ME4OH.create_netcdf_climatology(outputfileclim, "dohc", longrid, latgrid, thetimeperiod)
+
+    # Create empty files for the anomalies
+    # (to compare with experiment A)
+    fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)-anom")
+    outputfileanom = joinpath(outputdir, fname)
+    isfile(outputfileanom) ? rm(outputfileanom) : @debug("ok") 
+    ME4OH.create_netcdf_results(outputfileanom, "adohc", longrid, latgrid, thetimeperiod)
 
     # Loop on the months
     for mm = 1:12
@@ -101,7 +107,6 @@ for (iilayer, layer) in enumerate(depthlayers)
         cpme = DIVAnd_cpme(mask, (pm, pn), (xi, yi),(obslon, obslat), obsval, 
             Lbackground, eps2background, moddim=[1,0]);
         
-
         if doplot
             fig = plt.figure(figsize=(10, 8))
             plt.pcolormesh(longrid, latgrid, ficlim', cmap=plt.cm.RdYlBu_r, vmin=0.34, vmax=0.38)
@@ -111,10 +116,10 @@ for (iilayer, layer) in enumerate(depthlayers)
         end
 
         # Write the results in the climatology file
-        NCDataset(outputfileclim, "a") do ds
-            ds["dohc"][:,:,mm] = ficlim
-            ds["dohc_error"][:,:,mm] = cpme
-        end
+        #NCDataset(outputfileclim, "a") do ds
+        #    ds["dohc"][:,:,mm] = ficlim
+        #    ds["dohc_error"][:,:,mm] = cpme
+        #end
 
         # Compute the residuals (from the results)
         dataresidual = DIVAnd_residual(s, ficlim);
@@ -150,9 +155,14 @@ for (iilayer, layer) in enumerate(depthlayers)
             timeindex = (yyyy - thetimeperiod[1]) * 12 + mm  
 
             @info("Writing time step $(timeindex) / $(ntimes)")
-            NCDataset(outputfileprod, "a") do ds
-                ds["dohc"][:,:,timeindex] = field2plot
-                ds["dohc_error"][:,:,timeindex] = cpme
+            #NCDataset(outputfileprod, "a") do ds
+            #    ds["dohc"][:,:,timeindex] = field2plot
+            #    ds["dohc_error"][:,:,timeindex] = cpme
+            #end
+
+            NCDataset(outputfileanom, "a") do ds
+                ds["adohc"][:,:,timeindex] = fimonth
+                ds["adohc_error"][:,:,timeindex] = cpme
             end
 
         end
