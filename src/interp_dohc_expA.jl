@@ -1,5 +1,11 @@
+# --------------------------------------------------
 # Interpolate the ocean_heat_content_density_anomaly
 # --------------------------------------------------
+#
+# In this script the variables dohc, adohc and dadohc are
+# interpolated for the periods of interests. 
+#
+# A relative error field is also computed for each analysis.
 
 using DIVAnd
 using Dates
@@ -12,25 +18,27 @@ const plt = PyPlot
 include("./ME4OH.jl")
 include("./config.jl")
 
-varname = "adohc"
+
+# Set variable and period of interest
+varname = "dohc"
+thetimeperiod = timeperiod1
 casename = "fixed-L"
 experimentname = "A"
 optimize_L = false
 optimize_eps = false
 
-thetimeperiod = timeperiod1
 datadirdisk = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1/$(thetimeperiod[1])-$(thetimeperiod[end])"
 isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
+outputdir = joinpath(mainoutputdir, "experiment-$(experimentname)", varname)
+mkpath(outputdir)
 
+# Generate list of files for the period of interest 
 datafilelist = ME4OH.get_filelist(datadirdisk);
 timeperiodtext = split(datadirdisk, "/")[end]
 nfiles = length(datafilelist)
 
 # Create metrics
 _, (pm, pn), (xi, yi) = DIVAnd.DIVAnd_rectdom(longrid, latgrid)
-
-outputdir = joinpath(mainoutputdir, "experiment-$(experimentname)", casename, varname)
-mkpath(outputdir)
 
 @info("Interpolating variable $(varname) over time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
 @info("Experiment $(experimentname)")
