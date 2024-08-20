@@ -20,18 +20,19 @@ include("./config.jl")
 
 
 # Set variable and period of interest
-varname = "adohc"
+varname = "dadohc"
 casename = "fixed-L"
-experimentname = "A"
+experimentname = "A-mask"
 optimize_L = false
 optimize_eps = false
+maskdepth = true
 
 thetimeperiodlist = [timeperiod1, timeperiod2, timeperiod3]
 
 # Loop on the 3 time periods
-for thetimeperiod in thetimeperiodlist
+for thetimeperiod in thetimeperiodlist[3:3]
 
-    @info("Worlking on the time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
+    @info("Working on the time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
 
     datadirdisk = "$(databasedir)/$(thetimeperiod[1])-$(thetimeperiod[end])"
     isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
@@ -50,7 +51,7 @@ for thetimeperiod in thetimeperiodlist
     @info("Experiment $(experimentname)")
 
     # Loop on the 3 layers
-    for (iilayer, layer) in enumerate(depthlayers)
+    for (iilayer, layer) in enumerate(depthlayers[1:1])
         @info("Working on layer $(layer[1]) - $(layer[end]) m")
 
         # Create mask for the considered depth levels
@@ -65,7 +66,7 @@ for thetimeperiod in thetimeperiodlist
         ME4OH.create_netcdf_results(outputfile, varname, longrid, latgrid, thetimeperiod)
 
         # Loop on the files
-        for (iii, datafile) in enumerate(datafilelist)
+        for (iii, datafile) in enumerate(datafilelist[1:50])
 
             @info("Working on file $(basename(datafile)) ($(iii)/$(nfiles))")
             lon, lat, dates, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = ME4OH.read_profile(datafile);
@@ -79,8 +80,17 @@ for thetimeperiod in thetimeperiodlist
             else 
                 @error("Variable $(varname) does not exist")
             end 
-            
+
             goodvalues = .!(isnan.(var2interp[iilayer,:]))
+            @info("Number of good observations: $(sum(goodvalues))")
+
+            if maskdepth == true
+                # Use the variable "dohc_mask_by_en4_maxdepth" to select valid obs.
+                goodmask = dohc_mask[iilayer,:] .== 1
+                @info("Number of non-mask observations: $(sum(goodmask))")
+                goodvalues2 = goodvalues .& goodmask
+                @info("Final number of good observations: $(sum(goodvalues2))")
+            end
 
             if optimize_L
                 lenxy, infoxy = DIVAnd.fithorzlen((lon[goodvalues], lat[goodvalues], layer[1] * ones(length(lon[goodvalues]))), 
