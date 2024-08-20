@@ -20,6 +20,7 @@ function download_check(datafile::AbstractString, datafileURL::AbstractString)
 end
 
 # Directories
+databasedir = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1"
 datadir = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/"
 datadirextra = "/home/ctroupin/data/ME4OH/data/en4.1.1/1979-2014/full/update/extra"
 
@@ -51,8 +52,8 @@ gebco16fileURL = make_dox_url("U0pqyXhcQrXjEUX")
 # The following parameter values are taken from the shared document 
 # "ME4OH_protocol_FINAL"
 
-cp0 = 3989.244      # J/kg/K is heat capacity
-rho0= 1030          # kg/m3 is density
+const cp0 = 3989.244      # J/kg/K is heat capacity
+const rho0= 1030          # kg/m3 is density
 
 # Time period
 timeperiod1 = 1979:2014 # (whole period) 

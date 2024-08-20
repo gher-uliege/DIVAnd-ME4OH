@@ -49,20 +49,22 @@ julia> lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, b
 """
 function read_profile(datafile::AbstractString)
     NCDataset(datafile, "r") do ds
-        lon = ds["ts_lon"][:]
-        lat = ds["ts_lat"][:]
+        lon = Float64.(ds["ts_lon"][:])
+        lon[lon .< 20.] .+= 360;
+
+        lat = Float64.(ds["ts_lat"][:])
         time = ds["en4_ymd"][:,:]
         dates = Dates.DateTime.(time[1,:], time[2,:], time[3,:])
         vertical_levels = ds["ts_z"][:]
-        depth_level_thickness = ds["ts_dz"][:]
-        bounds = ds["ts_bound"][:,:]
-        #T = ds["temp"][:,:]
-        #SSH = ds["eta_t"][:]
-        #SST = ds["sst"][:]
-        #S = ds["salt"][:,:]
-        dohc = ds["dohc"][:,:]
-        adohc = ds["adohc"][:,:]
-        dadohc = ds["dadohc"][:,:]
+        depth_level_thickness = Float64.(ds["ts_dz"][:])
+        bounds = Float64.(ds["ts_bound"][:,:])
+        #T = Float64.(ds["temp"][:,:])
+        #SSH = Float64.(ds["eta_t"][:])
+        #SST = Float64.(ds["sst"][:])
+        #S = Float64.(ds["salt"][:,:])
+        dohc = Float64.(ds["dohc"][:,:])
+        adohc = Float64.(ds["adohc"][:,:])
+        dadohc = Float64.(ds["dadohc"][:,:])
 
         varlist = keys(ds)
         if "dohc_mask_by_en4_maxdepth" in varlist
@@ -72,10 +74,10 @@ function read_profile(datafile::AbstractString)
             dohc_mask = ones(Bool, size(dohc))
         end
 
-        return lon::Vector{Float32}, lat::Vector{Float32}, dates::Vector{DateTime}, 
+        return lon::Vector{Float64}, lat::Vector{Float64}, dates::Vector{DateTime}, 
         # vertical_levels::Vector{Float32}, #T::Matrix{Float32}, S::Matrix{Float32}, 
-        dohc::Matrix{Float32}, adohc::Matrix{Float32}, dadohc::Matrix{Float32},
-        dohc_mask::AbstractArray{Bool}, bounds::Matrix{Float32}, depth_level_thickness::Vector{Float32}
+        dohc::Matrix{Float64}, adohc::Matrix{Float64}, dadohc::Matrix{Float64},
+        dohc_mask::AbstractArray{Bool}, bounds::Matrix{Float64}, depth_level_thickness::Vector{Float64}
     end
 end
 
@@ -92,12 +94,12 @@ julia> lon, lat, dates, vertical_levels, T, S, dohc, adohc, dadohc, dohc_mask, b
 function read_profile(datafilelist::Vector{String})
 
     # Create empty vectors and matrices
-    lonall = Float32[]
-    latall = Float32[]
+    lonall = Float64[]
+    latall = Float64[]
     datesall = DateTime[]
-    dohcall = Array{Float32}(undef, 3, 0)
-    adohcall = Array{Float32}(undef, 3, 0)
-    dadohcall = Array{Float32}(undef, 3, 0)
+    dohcall = Array{Float64}(undef, 3, 0)
+    adohcall = Array{Float64}(undef, 3, 0)
+    dadohcall = Array{Float64}(undef, 3, 0)
     dohc_maskall = Array{Bool}(undef, 3, 0)
 
     _, _, _, _, _, _, _, bounds, depth_level_thickness = read_profile(datafilelist[1])
@@ -115,9 +117,9 @@ function read_profile(datafilelist::Vector{String})
         
     end
 
-    return lonall::Vector{Float32}, latall::Vector{Float32}, datesall::Vector{DateTime},
-        dohcall::Matrix{Float32}, adohcall::Matrix{Float32}, dadohcall::Matrix{Float32},
-        dohc_maskall::AbstractArray{Bool}, bounds::Matrix{Float32}, depth_level_thickness::Vector{Float32}
+    return lonall::Vector{Float64}, latall::Vector{Float64}, datesall::Vector{DateTime},
+        dohcall::Matrix{Float64}, adohcall::Matrix{Float64}, dadohcall::Matrix{Float64},
+        dohc_maskall::AbstractArray{Bool}, bounds::Matrix{Float64}, depth_level_thickness::Vector{Float64}
 end
 
 """
@@ -207,12 +209,12 @@ julia> obslon, obslat, obsdepth, obsdates, T, S = read_data(datafilelist)
 """
 function read_data(datafilelist::Vector{String})
 
-    obslonall = Float32[]
-    obslatall = Float32[]
-    obsdepthall = Float32[]
+    obslonall = Float64[]
+    obslatall = Float64[]
+    obsdepthall = Float64[]
     obsdatesall = DateTime[]
-    Tall = Float32[]
-    Sall = Float32[]
+    Tall = Float64[]
+    Sall = Float64[]
 
     for datafile in datafilelist
         lon, lat, dates, depth, T, S, dohc = read_profile(datafile)
@@ -227,8 +229,8 @@ function read_data(datafilelist::Vector{String})
         append!(Sall, S)
     end
     
-    return obslonall::Vector{Float32}, obslatall::Vector{Float32}, obsdepthall::Vector{Float32},
-        obsdatesall::Vector{DateTime}, Tall::Vector{Float32}, Sall::Vector{Float32}
+    return obslonall::Vector{Float64}, obslatall::Vector{Float64}, obsdepthall::Vector{Float64},
+        obsdatesall::Vector{DateTime}, Tall::Vector{Float64}, Sall::Vector{Float64}
 end
 
 """
