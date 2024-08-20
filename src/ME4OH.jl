@@ -112,8 +112,8 @@ function read_profile(datafilelist::Vector{String})
         append!(latall, lat)
         append!(datesall, dates)
         dohcall = hcat(dohcall, dohc)
-        # adohcall = hcat(adohcall, adohc)
-        # dadohcall = hcat(dadohcall, dadohc)
+        adohcall = hcat(adohcall, adohc)
+        dadohcall = hcat(dadohcall, dadohc)
         
     end
 
@@ -395,7 +395,7 @@ julia> make_fname(2005:2014, [286.6, 685.9], "A")
 ```
 """
 function make_fname(timeperiod::UnitRange{Int64}, depthlayer::Vector{Float64}, experiment; product::String="DIVAnd")
-    fname = "OHC_$(timeperiod[1])_$(timeperiod[end])_lev0_$(depthlayer[end])_exp$(experiment)_$(product).nc"
+    fname = "OHC_$(timeperiod[1])_$(timeperiod[end])_lev$(depthlayer[1])_$(depthlayer[end])_exp$(experiment)_$(product).nc"
     return fname
 end
 
@@ -479,7 +479,7 @@ function get_clim_bounds(timeperiod::UnitRange{Int64})
 end
 
 """
-    create_netcdf_results(fname, longrid, latgrid, timegrid)
+    create_netcdf_results(fname, longrid, latgrid, timegrid, valex, title)
 
 Create the netCDF file with the spatial (defined by `longrid` and `latgrid`) and temporal grid (defined by `timegrid`).
 
