@@ -16,9 +16,10 @@ include("./config.jl")
 doplot = false
 varname = "dohc"
 casename = "fixed-L"
-experimentname = "B"
+experimentname = "B-mask"
 optimize_L = false
 optimize_eps = false
+maskdepth = true
 
 # analysis parameters 
 Lbackground = (15., 15.)
@@ -26,7 +27,7 @@ Lproduct = (5., 5.)
 eps2background = 10.
 eps2product = 5.
 
-thetimeperiod = timeperiod3
+thetimeperiod = timeperiod2
 datadirdisk = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1/$(thetimeperiod[1])-$(thetimeperiod[end])"
 isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
 outputdir = joinpath(mainoutputdir, "experiment-B")
@@ -59,14 +60,14 @@ for (iilayer, layer) in enumerate(depthlayers)
     # (one file per depth)
     fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)")
     outputfileprod = joinpath(outputdir, fname)
-    #isfile(outputfileprod) ? rm(outputfileprod) : @debug("ok") 
-    #ME4OH.create_netcdf_results(outputfileprod, "dohc", longrid, latgrid, thetimeperiod)
+    isfile(outputfileprod) ? rm(outputfileprod) : @debug("ok") 
+    ME4OH.create_netcdf_results(outputfileprod, "dohc", longrid, latgrid, thetimeperiod)
 
     # Create a netCDF for the climatology
     fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)-clim")
     outputfileclim = joinpath(outputdir, fname)
-    #isfile(outputfileclim) ? rm(outputfileclim) : @debug("ok") 
-    #ME4OH.create_netcdf_climatology(outputfileclim, "dohc", longrid, latgrid, thetimeperiod)
+    isfile(outputfileclim) ? rm(outputfileclim) : @debug("ok") 
+    ME4OH.create_netcdf_climatology(outputfileclim, "dohc", longrid, latgrid, thetimeperiod)
 
     # Create empty files for the anomalies
     # (to compare with experiment A)
@@ -95,6 +96,14 @@ for (iilayer, layer) in enumerate(depthlayers)
         pct = round(100 * ngood/nobs, digits=2)
         @info("Number of good observations: $(sum(goodvalues))/$(nobs) ($(pct)%)")
 
+        if maskdepth == true
+            # Use the variable "dohc_mask_by_en4_maxdepth" to select valid obs.
+            goodmask = dohc_mask[iilayer,:] .== 1
+            @info("Number of non-masked observations: $(sum(goodmask))")
+            goodvalues = goodvalues .& goodmask
+            @info("Final number of good observations: $(sum(goodvalues))")
+        end
+
         obslon = Float64.(lon[goodvalues]) 
         obslat = Float64.(lat[goodvalues])
         obsdates = dates[goodvalues]
@@ -116,10 +125,10 @@ for (iilayer, layer) in enumerate(depthlayers)
         end
 
         # Write the results in the climatology file
-        #NCDataset(outputfileclim, "a") do ds
-        #    ds["dohc"][:,:,mm] = ficlim
-        #    ds["dohc_error"][:,:,mm] = cpme
-        #end
+        NCDataset(outputfileclim, "a") do ds
+            ds["dohc"][:,:,mm] = ficlim
+            ds["dohc_error"][:,:,mm] = cpme
+        end
 
         # Compute the residuals (from the results)
         dataresidual = DIVAnd_residual(s, ficlim);
@@ -155,10 +164,10 @@ for (iilayer, layer) in enumerate(depthlayers)
             timeindex = (yyyy - thetimeperiod[1]) * 12 + mm  
 
             @info("Writing time step $(timeindex) / $(ntimes)")
-            #NCDataset(outputfileprod, "a") do ds
-            #    ds["dohc"][:,:,timeindex] = field2plot
-            #    ds["dohc_error"][:,:,timeindex] = cpme
-            #end
+            NCDataset(outputfileprod, "a") do ds
+                ds["dohc"][:,:,timeindex] = field2plot
+                ds["dohc_error"][:,:,timeindex] = cpme
+            end
 
             NCDataset(outputfileanom, "a") do ds
                 ds["adohc"][:,:,timeindex] = fimonth
