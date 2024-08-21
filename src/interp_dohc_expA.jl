@@ -20,7 +20,7 @@ include("./config.jl")
 
 
 # Set variable and period of interest
-varname = "dadohc"
+varname = "dohc"
 casename = "fixed-L"
 experimentname = "A-mask"
 optimize_L = false
@@ -30,7 +30,7 @@ maskdepth = true
 thetimeperiodlist = [timeperiod1, timeperiod2, timeperiod3]
 
 # Loop on the 3 time periods
-for thetimeperiod in thetimeperiodlist[3:3]
+for thetimeperiod in thetimeperiodlist
 
     @info("Working on the time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
 
@@ -51,7 +51,7 @@ for thetimeperiod in thetimeperiodlist[3:3]
     @info("Experiment $(experimentname)")
 
     # Loop on the 3 layers
-    for (iilayer, layer) in enumerate(depthlayers[1:1])
+    for (iilayer, layer) in enumerate(depthlayers)
         @info("Working on layer $(layer[1]) - $(layer[end]) m")
 
         # Create mask for the considered depth levels
@@ -66,7 +66,7 @@ for thetimeperiod in thetimeperiodlist[3:3]
         ME4OH.create_netcdf_results(outputfile, varname, longrid, latgrid, thetimeperiod)
 
         # Loop on the files
-        for (iii, datafile) in enumerate(datafilelist[1:50])
+        for (iii, datafile) in enumerate(datafilelist)
 
             @info("Working on file $(basename(datafile)) ($(iii)/$(nfiles))")
             lon, lat, dates, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = ME4OH.read_profile(datafile);
@@ -87,9 +87,9 @@ for thetimeperiod in thetimeperiodlist[3:3]
             if maskdepth == true
                 # Use the variable "dohc_mask_by_en4_maxdepth" to select valid obs.
                 goodmask = dohc_mask[iilayer,:] .== 1
-                @info("Number of non-mask observations: $(sum(goodmask))")
-                goodvalues2 = goodvalues .& goodmask
-                @info("Final number of good observations: $(sum(goodvalues2))")
+                @info("Number of non-masked observations: $(sum(goodmask))")
+                goodvalues = goodvalues .& goodmask
+                @info("Final number of good observations: $(sum(goodvalues))")
             end
 
             if optimize_L
