@@ -37,6 +37,10 @@ Different configurations are applied for the computation of the gridded fields:
 
 Note that for 3., we didn't perform an optimisation of the temporal correlation length value and set it to 30 days.
 
+__Scripts:__
+- [`interp_dohc_expA.jl`](https://github.com/gher-uliege/DIVAnd-ME4OH/blob/main/src/interp_dohc_expA.jl)
+- [`interp_dohc_expA-time.jl`](https://github.com/gher-uliege/DIVAnd-ME4OH/blob/main/src/interp_dohc_expA-time.jl)
+
 ### Exp-B
 
 In experiment-B we create a climatology consisting of 12 monthly fields, then perform the interpolation on the anomalies with respect to that climatology.
