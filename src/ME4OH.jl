@@ -195,6 +195,36 @@ function read_TS_data(datafilelist::Vector)
 end
 
 """
+    vectorize_obs(lon, lat, dates, depth, T, S)
+Transform the observations (list of profiles) into vectors.
+This implies repeating the coordinates vectors.
+# Example
+```julia-repl 
+julia> obslon, obslat, obsdates, obsdepth, T, S = vectorize_obs(lon, lat, dates, depth, T, S)
+```
+"""
+function vectorize_obs(lon, lat, dates, depth, T, S)
+
+    nprofiles = length(lon)
+    nlevels = length(depth)
+
+    obslon = repeat(lon, inner=nlevels)
+    obslat = repeat(lat, inner=nlevels)
+    obsdepth = repeat(depth, outer=nprofiles)
+    obsdates = repeat(dates, inner=nlevels);
+
+    goodT = findall(.!isnan.(T[:]));
+    obslon = obslon[goodT]
+    obslat = obslat[goodT]
+    obsdepth = obsdepth[goodT]
+    obsdates = obsdates[goodT]
+    T = T[goodT]
+    S = S[goodT]
+    return obslon::Vector{Float64}, obslat::Vector{Float64}, obsdates::Vector{DateTime}, 
+    obsdepth::Vector{Float64}, T::Vector{Float64}, S::Vector{Float64}
+end
+
+"""
     me4oh_dohc(T, z)
 
 Compute the ocean heat content density using the temperature field `T` and

@@ -34,7 +34,7 @@ for thetimeperiod in thetimeperiodlist
 
     @info("Working on the time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
 
-    datadirdisk = "$(databasedir)/$(thetimeperiod[1])-$(thetimeperiod[end])"
+    datadirdisk = joinpath(databasedir, "$(thetimeperiod[1])-$(thetimeperiod[end])")
     isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
     outputdir = joinpath(mainoutputdir, "experiment-$(experimentname)", varname)
     mkpath(outputdir)

@@ -16,7 +16,7 @@ include("./config.jl")
 doplot = false
 varname = "dohc"
 casename = "fixed-L"
-experimentname = "C"
+experimentname = "C-SST"
 optimize_L = false
 optimize_eps = false
 
@@ -27,7 +27,7 @@ eps2background = 10.
 eps2product = 5.
 
 thetimeperiod = timeperiod2
-datadirdisk = "/media/ctroupin/T7 Shield/000060826v009/data/en4.1.1/$(thetimeperiod[1])-$(thetimeperiod[end])"
+datadirdisk = joinpath(databasedir, "$(thetimeperiod[1])-$(thetimeperiod[end])")
 isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
 outputdir = joinpath(mainoutputdir, "experiment-C")
 mkpath(outputdir)
