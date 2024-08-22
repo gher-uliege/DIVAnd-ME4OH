@@ -22,7 +22,7 @@ include("./config.jl")
 # Set variable and period of interest
 varname = "dohc"
 casename = "fixed-L"
-experimentname = "A-mask"
+experimentname = "A"
 optimize_L = false
 optimize_eps = false
 maskdepth = true
@@ -66,7 +66,9 @@ for thetimeperiod in thetimeperiodlist
         ME4OH.create_netcdf_results(outputfile, varname, longrid, latgrid, thetimeperiod)
 
         # Loop on the files
-        for (iii, datafile) in enumerate(datafilelist)
+        for datafile in datafilelist
+
+            iii = findfirst(datafilelist .== datafile)
 
             @info("Working on file $(basename(datafile)) ($(iii)/$(nfiles))")
             lon, lat, dates, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = ME4OH.read_profile(datafile);
@@ -111,9 +113,9 @@ for thetimeperiod in thetimeperiodlist
                 @info("Lopt = $(L_opt), eps_opt = $(eps_opt)")
             end
             
-            fi, s = DIVAndrun(mask, (pm, pn), (xi, yi), (Float64.(lon[goodvalues]), Float64.(lat[goodvalues])), 
+            @time fi, s = DIVAndrun(mask, (pm, pn), (xi, yi), (Float64.(lon[goodvalues]), Float64.(lat[goodvalues])), 
                 Float64.(var2interp[iilayer, goodvalues]), L, epsilon2, moddim=[1,0])
-            cpme = DIVAnd_cpme(mask, (pm, pn), (xi, yi), (lon[goodvalues], lat[goodvalues]), 
+            @time cpme = DIVAnd_cpme(mask, (pm, pn), (xi, yi), (lon[goodvalues], lat[goodvalues]), 
                 var2interp[iilayer, goodvalues], L, epsilon2, moddim=[1,0]);
 
             NCDataset(outputfile, "a") do ds

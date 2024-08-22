@@ -33,9 +33,9 @@ Different input files are provided and the goal is to interpolate the observatio
 Different configurations are applied for the computation of the gridded fields:
 1. The observations are interpolated layer by layer and time period by time period, i.e. we don't introduce any influence from one period to the next or from one layer to another.
 2. Same as 1., except that the variable `dohc_mask_by_en4_maxdepth` is used to remove some of the measurements.
-3. Same as 1., except that we now introduce the time as a 3rd dimension, i.e., the observations from the months from before and after the month of interest have an influence on the field for that month.
+3. Same as 1., except that we now introduce the time as a 3rd dimension, i.e., the observations from the months from before and after the month of interest have an influence on the field for that month. 
 
-Note that for 3., we didn't perform an optimisation of the temporal correlation length value and set it to 30 days.
+Note that for 3., we didn't perform any optimisation of the temporal correlation length value and set it to 30 days. The computation time is increased in this configuration (approx. 35 seconds per time step, vs. 0.3 second for the configuration without the time correlation).
 
 __Scripts:__
 - [`interp_dohc_expA.jl`](https://github.com/gher-uliege/DIVAnd-ME4OH/blob/main/src/interp_dohc_expA.jl)

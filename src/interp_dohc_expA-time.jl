@@ -32,7 +32,7 @@ dateref = Dates.DateTime(1970,1,1)
 thetimeperiodlist = [timeperiod1, timeperiod2, timeperiod3]
 
 # Loop on the 3 time periods
-for thetimeperiod in thetimeperiodlist
+for thetimeperiod in thetimeperiodlist[1:1]
 
     @info("Working on the time period $(thetimeperiod[1]) - $(thetimeperiod[end])")
 
@@ -50,7 +50,7 @@ for thetimeperiod in thetimeperiodlist
     @info("Experiment $(experimentname)")
 
     # Loop on the 3 layers
-    for (iilayer, layer) in enumerate(depthlayers)
+    for (iilayer, layer) in enumerate(depthlayers[3:3])
         @info("Working on layer $(layer[1]) - $(layer[end]) m")
 
         # Create mask for the considered depth levels
@@ -61,11 +61,13 @@ for thetimeperiod in thetimeperiodlist
         fname = ME4OH.make_fname(thetimeperiod, layer, "A")
         outputfile = joinpath(outputdir, fname)
 
-        isfile(outputfile) ? rm(outputfile) : @debug("ok") 
-        ME4OH.create_netcdf_results(outputfile, varname, longrid, latgrid, thetimeperiod, title="DIVAnd interpolated field with temporal correlation")
+        #isfile(outputfile) ? rm(outputfile) : @debug("ok") 
+        #ME4OH.create_netcdf_results(outputfile, varname, longrid, latgrid, thetimeperiod, title="DIVAnd interpolated field with temporal correlation")
 
         # Loop on the files
-        for (iii, datafile) in enumerate(datafilelist)
+        for datafile in datafilelist
+
+            iii = findfirst(datafilelist .== datafile)
 
             # Load central time
             lon, lat, dates, dohc, adohc, dadohc, dohc_mask, bounds, depth_level_thickness = ME4OH.read_profile(datafile);
@@ -122,18 +124,18 @@ for thetimeperiod in thetimeperiodlist
                 @info("Lopt = $(L_opt), eps_opt = $(eps_opt)")
             end
             
-            @info("Creating gridded and error fields")
-            @time fi, s = DIVAndrun(masktime, (pm, pn, pt), (xi, yi, ti), (lon[goodvalues], lat[goodvalues], obsdays[goodvalues]), 
-                var2interp[iilayer, goodvalues], L, epsilon2, moddim=[1,0,0])
-            cpme = DIVAnd_cpme(masktime, (pm, pn, pt), (xi, yi, ti), (lon[goodvalues], lat[goodvalues], obsdays[goodvalues]), 
-                var2interp[iilayer, goodvalues], L, epsilon2, moddim=[1,0,0]);
+            # @info("Creating gridded and error fields")
+            # @time fi, s = DIVAndrun(masktime, (pm, pn, pt), (xi, yi, ti), (lon[goodvalues], lat[goodvalues], obsdays[goodvalues]), 
+            #     var2interp[iilayer, goodvalues], L, epsilon2, moddim=[1,0,0])
+            # cpme = DIVAnd_cpme(masktime, (pm, pn, pt), (xi, yi, ti), (lon[goodvalues], lat[goodvalues], obsdays[goodvalues]), 
+            #     var2interp[iilayer, goodvalues], L, epsilon2, moddim=[1,0,0]);
 
-            @info(size(fi));
+            # @info(size(fi));
 
-            NCDataset(outputfile, "a") do ds
-                ds[varname][:,:,iii] = fi[:,:,tindex]
-                ds[varname*"_error"][:,:,iii] = cpme[:,:,tindex]
-            end
+            # NCDataset(outputfile, "a") do ds
+            #     ds[varname][:,:,iii] = fi[:,:,tindex]
+            #     ds[varname*"_error"][:,:,iii] = cpme[:,:,tindex]
+            # end
             
         end
 
