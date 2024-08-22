@@ -1,5 +1,9 @@
-# Construct a monthly climatology for Temperature
-# -----------------------------------------------
+# -------------------------------------------------------------
+# Interpolate DOHC - Experiment C
+#
+# Construct a 4D gridded field of temperature that will be
+# used to compute the heat content using `compute_dohc_expC.jl`
+# -------------------------------------------------------------
 
 using DIVAnd
 using Dates
@@ -16,7 +20,7 @@ include("./config.jl")
 doplot = false
 varname = "dohc"
 casename = "fixed-L"
-experimentname = "C-SST"
+experimentname = "C"
 optimize_L = false
 optimize_eps = false
 
@@ -26,7 +30,7 @@ Lproduct = (5., 5.)
 eps2background = 10.
 eps2product = 5.
 
-thetimeperiod = timeperiod2
+thetimeperiod = timeperiod1
 datadirdisk = joinpath(databasedir, "$(thetimeperiod[1])-$(thetimeperiod[end])")
 isdir(datadirdisk) ? @info("Directory exists") : @error("Directory does not exist");
 outputdir = joinpath(mainoutputdir, "experiment-C")
@@ -80,6 +84,7 @@ for mm = 1:12
     
     # Loop on the depths
     for (iilayer, layer) in enumerate(depthlevels)
+        
         @info("Working on depth: $(layer) m")
 
         # Create mask for the considered depth levels
@@ -166,36 +171,3 @@ for mm = 1:12
     end
 
 end
-
-    # # Create empty files for the results
-    # # (one file per depth)
-    # fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)")
-    # outputfileprod = joinpath(outputdir, fname)
-    # #isfile(outputfileprod) ? rm(outputfileprod) : @debug("ok") 
-    # #ME4OH.create_netcdf_results(outputfileprod, "dohc", longrid, latgrid, thetimeperiod)
-
-    # # Create empty files for the anomalies
-    # # (to compare with experiment A)
-    # fname = ME4OH.make_fname(thetimeperiod, layer, "$(experimentname)-anom")
-    # outputfileanom = joinpath(outputdir, fname)
-    # isfile(outputfileanom) ? rm(outputfileanom) : @debug("ok") 
-    # ME4OH.create_netcdf_results(outputfileanom, "adohc", longrid, latgrid, thetimeperiod)
-
-    
-
-#         
-        
-#         if doplot
-#             fig = plt.figure(figsize=(10, 8))
-#             plt.pcolormesh(longrid, latgrid, ficlim', cmap=plt.cm.RdYlBu_r, vmin=0.34, vmax=0.38)
-#             fname = "dohc_clim_$(lpad(mm, 2, '0'))_depth_$(iilayer).jpg"
-#             plt.savefig(joinpath(figdir, fname))
-#             plt.close()
-#         end
-
-#         
-#        
-
-#     end
-
-# end
